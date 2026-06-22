@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Testing Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f7f9fb; color: #1f2937; }
+    header { background: #0f4c81; color: white; padding: 20px 24px; }
+    header h1 { margin: 0; font-size: 1.9rem; }
+    header p { margin: 8px 0 0; color: #dbeafe; }
+    .container { padding: 20px 24px; max-width: 1480px; margin: 0 auto; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; align-items: flex-end; }
+    .toolbar label { display: flex; flex-direction: column; font-size: 0.95rem; color: #374151; }
+    select, input[type='text'] { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; min-width: 200px; }
+    button { background: #0f4c81; color: white; border: none; border-radius: 6px; padding: 12px 16px; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
+    button:hover { background: #153f69; transform: translateY(-1px); }
+    .tabs { display: flex; border-bottom: 1px solid #cbd5e1; margin-bottom: 18px; }
+    .tab { margin-right: 8px; padding: 10px 16px; cursor: pointer; border-radius: 8px 8px 0 0; background: #e2e8f0; color: #1f2937; }
+    .tab.active { background: white; border: 1px solid #cbd5e1; border-bottom-color: white; }
+    section { display: none; }
+    section.active { display: block; }
+    .summary-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 18px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+    .card strong { display: block; font-size: 1.6rem; margin-bottom: 8px; }
+    .card small { color: #6b7280; }
+    .table-wrapper { overflow-x: auto; background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: middle; white-space: nowrap; }
+    th { background: #f8fafc; font-weight: 600; font-size: 0.85rem; letter-spacing: 0.01em; position: sticky; top: 0; z-index: 10; }
+    tbody tr:hover { background: #f8fafc; }
+    .details-row td { background: #f8fafc; white-space: normal; }
+    .details-inner { padding: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .detail-block { background: #ffffff; border: 1px solid #d1d5db; border-radius: 10px; padding: 10px; }
+    .detail-block h4 { margin: 0 0 6px; font-size: 0.9rem; color: #111827; }
+    .detail-block ul { margin: 0; padding-left: 18px; font-size: 0.85rem; color: #334155; }
+    .detail-block li { margin-bottom: 4px; }
+    .note-input { width: 100%; min-height: 110px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; resize: vertical; font-family: inherit; font-size: 0.95rem; background: #f8fafc; }
+    .note-input.note-inline { min-height: 50px; max-width: 180px; font-size: 0.9rem; }
+    .date-input { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; width: 120px; }
+    input[type='date'].quoted-date-input { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; width: 120px; }
+    input[type='number'].quoted-price-input { padding: 6px 8px; font-size: 0.9rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; }
+    select.quoted-uom-select { padding: 6px 8px; font-size: 0.9rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; }
+    select.status-select { padding: 6px 8px; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 130px; }
+    select.status-select.status-not-started { background: #f9fafb; color: #6b7280; }
+    select.status-select.status-in-progress { background: #fffbeb; color: #d97706; border-color: #fcd34d; }
+    select.status-select.status-complete { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
+    .delta-positive { color: #10b981; font-weight: 600; }
+    .delta-negative { color: #ef4444; font-weight: 600; }
+    .delta-neutral { color: #6b7280; }
+    .selected-count { margin-top: 12px; font-size: 0.98rem; color: #334155; }
+    /* Row highlight classes for significant price swings */
+    tr.row-alert-high td:first-child { border-left: 4px solid #ef4444; }
+    tr.row-alert-medium td:first-child { border-left: 4px solid #f59e0b; }
+    tr.row-alert-low td:first-child { border-left: 4px solid #10b981; }
+    /* Progress bar */
+    .progress-wrap { margin-bottom: 14px; }
+    .progress-label { font-size: 0.9rem; color: #374151; margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .progress-bar-outer { height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+    .progress-bar-inner { height: 100%; background: #0f4c81; border-radius: 99px; transition: width 0.3s ease; }
+    /* Supplier rollup table in summary */
+    .summary-section-title { font-size: 1.1rem; font-weight: 600; margin: 20px 0 8px; color: #111827; }
+    /* Searchable dropdown */
+    .search-select-wrap { position: relative; min-width: 200px; }
+    .search-select-wrap input[type='text'] { width: 100%; box-sizing: border-box; }
+    .search-select-list { position: absolute; top: 100%; left: 0; right: 0; max-height: 260px; overflow-y: auto; background: white; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 6px 6px; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .search-select-list.open { display: block; }
+    .search-select-item { padding: 8px 12px; cursor: pointer; font-size: 0.95rem; }
+    .search-select-item:hover, .search-select-item.highlighted { background: #e0f2fe; }
+    .search-select-item.selected { background: #dbeafe; font-weight: 600; }
+    .search-select-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6b7280; font-size: 1.1rem; line-height: 1; display: none; }
+    .search-select-clear.visible { display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Market Testing Dashboard</h1>
+    <p>Filter by supplier, supply manager, or buyer — review pricing details and track quoted parts.
+      <span id="connStatus" style="margin-left:16px;padding:3px 10px;border-radius:12px;font-size:0.8rem;background:#fbbf24;color:#1f2937;">⏳ Connecting...</span>
+    </p>
+  </header>
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-target="market">Market Testing</div>
+      <div class="tab" data-target="summary">Summary</div>
+    </div>
+
+    <div class="toolbar">
+      <label>Supplier
+        <div class="search-select-wrap" id="supplierSearchWrap">
+          <input type="text" id="supplierFilterInput" placeholder="Type to search suppliers..." autocomplete="off" />
+          <span class="search-select-clear" id="supplierClear">&times;</span>
+          <div class="search-select-list" id="supplierDropdown"></div>
+        </div>
+      </label>
+      <label>Supply Manager
+        <select id="managerFilter"><option value="">All Supply Managers</option></select>
+      </label>
+      <label>Buyer
+        <select id="buyerFilter"><option value="">All Buyers</option></select>
+      </label>
+      <label>Search Item / Description
+        <input type="text" id="searchTerm" placeholder="Search item or description" />
+      </label>
+      <button id="resetFilters" style="align-self:flex-end;">Reset filters</button>
+      <button id="exportExcel" style="align-self:flex-end;">Export to Excel</button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap" id="progressWrap" style="display:none;">
+      <div class="progress-label">
+        <span id="progressLabel">Quoted: 0 / 0 parts</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-outer">
+        <div class="progress-bar-inner" id="progressBar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <section id="market" class="active">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:42px;">
+                <input type="checkbox" id="selectAllCheckbox" title="Select / Deselect all filtered rows" />
+              </th>
+              <th>Status</th>
+              <th>Item</th>
+              <th>Description</th>
+              <th>Supplier</th>
+              <th>Supply Manager</th>
+              <th>Buyer</th>
+              <th>Date Checked</th>
+              <th>Notes</th>
+              <th>Quoted Date</th>
+              <th>Quoted UOM</th>
+              <th>Quoted Price</th>
+              <th>Supplier Quote</th>
+              <th>Quoted Price % Δ (vs BPO)</th>
+              <th>Quoted Annual Impact to Spend (vs BPO)</th>
+              <th>Quoted Price % Δ (vs ZZZ)</th>
+              <th>Quoted Annual Impact to Spend (vs ZZZ)</th>
+              <th>BPO 12.4.25 Price / UOM</th>
+              <th>BPO 6.1.26 Price / UOM</th>
+              <th>BPO % Δ</th>
+              <th>BPO Annual Impact to Spend</th>
+              <th>ZZZ 12.1.25 Price / UOM</th>
+              <th>ZZZ 6.15.26 Price / UOM</th>
+              <th>ZZZ % Δ</th>
+              <th>Annual Impact to Spend</th>
+              <th>Usage Info</th>
+            </tr>
+          </thead>
+          <tbody id="partsTableBody"></tbody>
+        </table>
+      </div>
+      <div class="selected-count" id="selectedCount">Selected parts: 0</div>
+    </section>
+
+    <section id="summary">
+      <div class="summary-grid">
+        <div class="card"><strong id="summaryItems">0</strong><small>Unique part items</small></div>
+        <div class="card"><strong id="summarySuppliers">0</strong><small>Suppliers present</small></div>
+        <div class="card"><strong id="summaryManagers">0</strong><small>Supply managers present</small></div>
+        <div class="card"><strong id="summaryBuyers">0</strong><small>Buyers present</small></div>
+        <div class="card"><strong id="summaryQuotedParts">0</strong><small>Parts with a quoted price</small></div>
+        <div class="card"><strong id="summaryTotalImpactBPO">—</strong><small>Total quoted annual impact vs BPO</small></div>
+        <div class="card"><strong id="summaryTotalImpactZZZ">—</strong><small>Total quoted annual impact vs ZZZ</small></div>
+      </div>
+      <div class="card" style="margin-bottom: 16px;">
+        <h3 style="margin-top: 0;">Filtered breakdown</h3>
+        <p id="summaryFilterDetails">Filters are applied to the market table and summary values update automatically.</p>
+      </div>
+      <div class="table-wrapper" style="margin-bottom:20px;">
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Total unique parts</td><td id="metricTotalParts"></td></tr>
+            <tr><td>Total selected parts</td><td id="metricSelectedParts"></td></tr>
+            <tr><td>Parts quoted</td><td id="metricQuotedParts"></td></tr>
+            <tr><td>Total suppliers</td><td id="metricSuppliers"></td></tr>
+            <tr><td>Total supply managers</td><td id="metricManagers"></td></tr>
+            <tr><td>Total quoted annual impact vs BPO 6.1.26</td><td id="metricTotalImpactBPO"></td></tr>
+            <tr><td>Total quoted annual impact vs ZZZ 6.15.26</td><td id="metricTotalImpactZZZ"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="summary-section-title">Supplier-Level Impact Rollup</div>
+      <div class="table-wrapper">
+        <table id="supplierRollupTable">
+          <thead>
+            <tr>
+              <th>Supplier</th>
+              <th>Parts in Filter</th>
+              <th>Parts Quoted</th>
+              <th>Total USAGE $</th>
+              <th>Quoted Annual Impact vs BPO</th>
+              <th>Quoted Annual Impact vs ZZZ</th>
+              <th>ZZZ % Δ (avg)</th>
+            </tr>
+          </thead>
+          <tbody id="supplierRollupBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="sm-crossref.js"></script>
+  <script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIGURATION — Paste your Power Automate flow URLs here
+    // ═══════════════════════════════════════════════════════════════════════════
+    const FLOW_CONFIG = {
+      // GET flow URL — reads all items from SharePoint list
+      GET_URL: '',
+      // PUT flow URL — creates or updates a single item in SharePoint list
+      PUT_URL: '',
+    };
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    const state = {
+      supplier: '',
+      manager: '',
+      buyer: '',
+      search: '',
+      selected: new Set(),
+    };
+
+    // ── DOM refs ───────────────────────────────────────────────────────────────
+    const supplierFilterInput = document.getElementById('supplierFilterInput');
+    const supplierDropdown    = document.getElementById('supplierDropdown');
+    const supplierClear       = document.getElementById('supplierClear');
+    const supplierSearchWrap  = document.getElementById('supplierSearchWrap');
+    const supplierFilter      = { value: '' }; // compatibility shim
+    const managerFilter    = document.getElementById('managerFilter');
+    const buyerFilter      = document.getElementById('buyerFilter');
+    const searchTerm       = document.getElementById('searchTerm');
+    const resetFilters     = document.getElementById('resetFilters');
+    const exportExcelBtn   = document.getElementById('exportExcel');
+    const partsTableBody   = document.getElementById('partsTableBody');
+    const selectedCount    = document.getElementById('selectedCount');
+    const selectAllCb      = document.getElementById('selectAllCheckbox');
+    const progressWrap     = document.getElementById('progressWrap');
+    const progressLabel    = document.getElementById('progressLabel');
+    const progressPct      = document.getElementById('progressPct');
+    const progressBar      = document.getElementById('progressBar');
+    const summaryItems     = document.getElementById('summaryItems');
+    const summarySuppliers = document.getElementById('summarySuppliers');
+    const summaryManagers  = document.getElementById('summaryManagers');
+    const summaryBuyers    = document.getElementById('summaryBuyers');
+    const summaryQuotedParts    = document.getElementById('summaryQuotedParts');
+    const summaryTotalImpactBPO = document.getElementById('summaryTotalImpactBPO');
+    const summaryTotalImpactZZZ = document.getElementById('summaryTotalImpactZZZ');
+    const metricTotalParts      = document.getElementById('metricTotalParts');
+    const metricSelectedParts   = document.getElementById('metricSelectedParts');
+    const metricQuotedParts     = document.getElementById('metricQuotedParts');
+    const metricSuppliers       = document.getElementById('metricSuppliers');
+    const metricManagers        = document.getElementById('metricManagers');
+    const metricTotalImpactBPO  = document.getElementById('metricTotalImpactBPO');
+    const metricTotalImpactZZZ  = document.getElementById('metricTotalImpactZZZ');
+    const summaryFilterDetails  = document.getElementById('summaryFilterDetails');
+    const supplierRollupBody    = document.getElementById('supplierRollupBody');
+    const tabs     = Array.from(document.querySelectorAll('.tab'));
+    const sections = { market: document.getElementById('market'), summary: document.getElementById('summary') };
+
+    const data = { items: [], summary: {} };
+    let dataLoaded = false;
+
+    // ── SM Cross Reference (loaded from sm-crossref.js) ───────────────────────
+    const smCrossRef = window.smCrossRef || {};
+    const validSMs = new Set(Object.values(smCrossRef));
+
+    // Apply SM cross reference to items — overwrites supplyManagers with the
+    // authoritative mapping from the SM cross reference spreadsheet.
+    // Items without a match get their supplyManagers cleaned (remove junk numeric values).
+    function applySmCrossRef() {
+      data.items.forEach(item => {
+        const baseItem = item.item.replace(/ - OSP$/, '').trim();
+        const sm = smCrossRef[baseItem] || smCrossRef[item.item];
+        if (sm) {
+          item.supplyManagers = [sm];
+          item.supplyManager  = sm;
+        } else {
+          // Only keep values that are valid SM names (not numbers or field names)
+          item.supplyManagers = (item.supplyManagers || []).filter(v => validSMs.has(v));
+          item.supplyManager  = item.supplyManagers[0] || '';
+        }
+      });
+      // Rebuild summary counts
+      const allSMs = new Set(data.items.flatMap(i => i.supplyManagers).filter(Boolean));
+      data.summary.supplyManagerCount = allSMs.size;
+    }
+
+    // ── Data loading ───────────────────────────────────────────────────────────
+    function ensureDataLoaded() {
+      if (dataLoaded) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        if (window.marketData) {
+          data.items   = window.marketData.items   || [];
+          data.summary = window.marketData.summary || {};
+          applySmCrossRef();
+          dataLoaded = true;
+          resolve();
+          return;
+        }
+        const s = document.createElement('script');
+        s.src = 'market-data.js';
+        s.onload = () => {
+          if (window.marketData) {
+            data.items   = window.marketData.items   || [];
+            data.summary = window.marketData.summary || {};
+            applySmCrossRef();
+            dataLoaded = true;
+            resolve();
+          } else { reject(new Error('marketData not found after load')); }
+        };
+        s.onerror = () => reject(new Error('Failed to load market-data.js'));
+        document.head.appendChild(s);
+      });
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function formatCurrency(value) {
+      if (value == null || value === '') return '';
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    }
+    function formatUOM(uom) { return uom ? ` / ${uom}` : ''; }
+
+    function anySourceValue(item, key, sourceName) {
+      const candidate = item.sources.find(s => s.source === sourceName && s[key] != null && s[key] !== '');
+      return candidate ? candidate[key] : '';
+    }
+
+    function calculateDelta(priceFrom, priceTo) {
+      if (!priceFrom || !priceTo) return null;
+      const from = parseFloat(priceFrom), to = parseFloat(priceTo);
+      if (isNaN(from) || isNaN(to) || from === 0) return null;
+      return ((to - from) / from) * 100;
+    }
+
+    function formatDelta(delta) {
+      if (delta === null || delta === undefined) return '';
+      const sign = delta > 0 ? '+' : '';
+      const cls = delta > 0 ? 'delta-positive' : delta < 0 ? 'delta-negative' : 'delta-neutral';
+      return `<span class="${cls}">${sign}${delta.toFixed(2)}%</span>`;
+    }
+
+    function calculateQuotedDelta(currentPrice, quotedPrice) {
+      if (!currentPrice || !quotedPrice || currentPrice === 0) return null;
+      return ((quotedPrice - currentPrice) / currentPrice) * 100;
+    }
+
+    function calculateQuotedAnnualImpact(currentPrice, quotedPrice, usage) {
+      if (!currentPrice || !quotedPrice || !usage) return null;
+      return (quotedPrice - currentPrice) * usage;
+    }
+
+    function calculateAnnualImpact(item) {
+      const oldPrice = parseFloat(anySourceValue(item, 'LIST_PRICE_PER_PRIMARY UOM', 'ZZZ 12.1.25')) || 0;
+      const newPrice = parseFloat(anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26'))                 || 0;
+      const usage    = parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 6.15.26'))
+                    || parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 12.1.25'))               || 0;
+      if (!oldPrice || !newPrice || !usage) return null;
+      return (newPrice - oldPrice) * usage;
+    }
+
+    function calculateBPOAnnualImpact(item) {
+      const oldPrice = parseFloat(anySourceValue(item, 'Price', 'BPO 12.4.25')) || 0;
+      const newPrice = parseFloat(anySourceValue(item, 'Price', 'BPO 6.1.26'))  || 0;
+      const usage    = parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 6.15.26'))
+                    || parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 12.1.25')) || 0;
+      if (!oldPrice || !newPrice || !usage) return null;
+      return (newPrice - oldPrice) * usage;
+    }
+
+    function getAvailableUOMs(itemKey) {
+      const itemObj = data.items.find(i => i.item === itemKey);
+      if (!itemObj) return [];
+      const uoms = new Set();
+      itemObj.sources.forEach(src => {
+        const uom = src.UOM || src.PRIMARY_UOM || src['PELLA PRIMARY UOM'];
+        if (uom) uoms.add(uom);
+      });
+      return Array.from(uoms).sort();
+    }
+
+    // ── Row highlight helper ───────────────────────────────────────────────────
+    // Returns a class name based on the largest absolute delta across BPO/ZZZ columns
+    function getRowAlertClass(item) {
+      const bpoDelta = calculateDelta(
+        anySourceValue(item, 'Price', 'BPO 12.4.25'),
+        anySourceValue(item, 'Price', 'BPO 6.1.26')
+      );
+      const zzzDelta = calculateDelta(
+        anySourceValue(item, 'LIST_PRICE_PER_PRIMARY UOM', 'ZZZ 12.1.25'),
+        anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26')
+      );
+      const deltas = [bpoDelta, zzzDelta].filter(d => d !== null);
+      if (!deltas.length) return '';
+      const max = Math.max(...deltas.map(Math.abs));
+      if (max >= 10) return 'row-alert-high';
+      if (max >= 5)  return 'row-alert-medium';
+      return '';
+    }
+
+    // ── SharePoint-backed storage layer ──────────────────────────────────────
+    // In-memory cache of SharePoint list data, keyed by item (Title field)
+    const spCache = {};
+    let spLoaded = false;
+    let spAvailable = !!(FLOW_CONFIG.GET_URL && FLOW_CONFIG.PUT_URL);
+    const saveTimers = {};
+
+    // Load all items from SharePoint list via GET flow
+    async function loadFromSharePoint() {
+      if (!FLOW_CONFIG.GET_URL) { spAvailable = false; return; }
+      try {
+        const resp = await fetch(FLOW_CONFIG.GET_URL, { method: 'GET', mode: 'cors' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const items = await resp.json();
+        items.forEach(row => {
+          const key = row.Title || row.title;
+          if (!key) return;
+          spCache[key] = {
+            Status:        row.Status        || row.Status_x0020_Value || '',
+            DateChecked:   row.DateChecked    || '',
+            Notes:         row.Notes          || '',
+            QuotedDate:    row.QuotedDate     || '',
+            QuotedUOM:     row.QuotedUOM      || '',
+            QuotedPrice:   row.QuotedPrice    != null ? String(row.QuotedPrice) : '',
+            SupplierQuote: row.SupplierQuote  || '',
+          };
+        });
+        spLoaded = true;
+        console.log(`Loaded ${items.length} items from SharePoint`);
+      } catch (err) {
+        console.warn('SharePoint GET failed, falling back to localStorage:', err);
+        spAvailable = false;
+      }
+    }
+
+    // Save a single item to SharePoint via PUT flow (debounced)
+    function saveToSharePoint(itemKey) {
+      if (!spAvailable || !FLOW_CONFIG.PUT_URL) return;
+      clearTimeout(saveTimers[itemKey]);
+      saveTimers[itemKey] = setTimeout(() => {
+        const cached = spCache[itemKey] || {};
+        const payload = {
+          Title:         itemKey,
+          Status:        cached.Status        || 'Not Started',
+          DateChecked:   cached.DateChecked   || null,
+          Notes:         cached.Notes         || '',
+          QuotedDate:    cached.QuotedDate    || null,
+          QuotedUOM:     cached.QuotedUOM     || '',
+          QuotedPrice:   cached.QuotedPrice   ? parseFloat(cached.QuotedPrice) : null,
+          SupplierQuote: cached.SupplierQuote || '',
+        };
+        fetch(FLOW_CONFIG.PUT_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(err => console.warn(`SharePoint PUT failed for ${itemKey}:`, err));
+      }, 1000); // 1 second debounce
+    }
+
+    // ── Unified load/save functions (SharePoint with localStorage fallback) ──
+    function spGet(itemKey, field) {
+      if (spAvailable && spCache[itemKey]) return spCache[itemKey][field] || '';
+      // Fallback to localStorage
+      const lsKey = `market-${field.toLowerCase().replace(/([A-Z])/g, '-$1').toLowerCase()}-${itemKey}`;
+      try { return localStorage.getItem(lsKey) || ''; } catch(e) { return ''; }
+    }
+
+    function spSet(itemKey, field, value) {
+      // Always update cache
+      if (!spCache[itemKey]) spCache[itemKey] = {};
+      spCache[itemKey][field] = value;
+      // Save to SharePoint
+      if (spAvailable) {
+        saveToSharePoint(itemKey);
+      }
+      // Also save to localStorage as backup
+      const lsKey = `market-${field.toLowerCase().replace(/([A-Z])/g, '-$1').toLowerCase()}-${itemKey}`;
+      try { localStorage.setItem(lsKey, value); } catch(e) {}
+    }
+
+    // Status mapping: SharePoint uses "Not Started"/"In Progress"/"Complete"
+    // App uses "not-started"/"in-progress"/"complete"
+    const statusToSP = { 'not-started': 'Not Started', 'in-progress': 'In Progress', 'complete': 'Complete' };
+    const statusFromSP = { 'Not Started': 'not-started', 'In Progress': 'in-progress', 'Complete': 'complete' };
+
+    const loadDate        = item => spGet(item, 'DateChecked');
+    const saveDate        = (item, v) => spSet(item, 'DateChecked', v);
+    const loadNote        = item => spGet(item, 'Notes');
+    const saveNote        = (item, v) => spSet(item, 'Notes', v);
+    const loadQuotedNote  = item => spGet(item, 'SupplierQuote');
+    const saveQuotedNote  = (item, v) => spSet(item, 'SupplierQuote', v);
+    const loadQuotedDate  = item => spGet(item, 'QuotedDate');
+    const saveQuotedDate  = (item, v) => spSet(item, 'QuotedDate', v);
+    const loadQuotedPrice = item => spGet(item, 'QuotedPrice');
+    const saveQuotedPrice = (item, v) => spSet(item, 'QuotedPrice', v);
+    const loadQuotedUOM   = item => spGet(item, 'QuotedUOM');
+    const saveQuotedUOM   = (item, v) => spSet(item, 'QuotedUOM', v);
+    const loadStatus      = item => {
+      const raw = spGet(item, 'Status');
+      return statusFromSP[raw] || raw || 'not-started';
+    };
+    const saveStatus      = (item, v) => spSet(item, 'Status', statusToSP[v] || v);
+
+    // ── Filters ────────────────────────────────────────────────────────────────
+    function filtersSelected() {
+      return !!(state.supplier || state.manager || state.buyer);
+    }
+
+    function getFilterMatches(item) {
+      const supplierMatch = !state.supplier || item.suppliers.includes(state.supplier);
+      const managerMatch  = !state.manager  || item.supplyManagers.includes(state.manager);
+      const buyerMatch = !state.buyer || item.sources.some(src =>
+        (src['BUYER PLANNER'] === state.buyer || src['Buyer'] === state.buyer)
+      );
+      const searchValue = state.search.toLowerCase();
+      const textSearch  = !searchValue ||
+        (item.item || '').toLowerCase().includes(searchValue) ||
+        (item.description || '').toLowerCase().includes(searchValue);
+      return supplierMatch && managerMatch && buyerMatch && textSearch;
+    }
+
+    function renderFilterOptions() {
+      let suppliers = [], managers = [], buyers = [];
+
+      if (data.summary && Array.isArray(data.summary.suppliers) && data.summary.suppliers.length) {
+        suppliers = data.summary.suppliers.slice().sort();
+      } else if (data.items.length) {
+        suppliers = Array.from(new Set(data.items.flatMap(i => i.suppliers))).sort();
+      }
+
+      if (data.items.length) {
+        managers = Array.from(new Set(
+          data.items
+            .flatMap(i => i.supplyManagers)
+            .filter(m => m && m.trim())
+        )).sort();
+
+        buyers = Array.from(new Set(
+          data.items
+            .flatMap(i => i.sources)
+            .map(s => s['BUYER PLANNER'] || s['Buyer'])
+            .filter(b => b && b.trim())
+        )).sort();
+      }
+
+      // Store supplier list for the searchable dropdown
+      window._supplierList = suppliers;
+      renderSupplierDropdown(suppliers, '');
+      managerFilter.innerHTML  = '<option value="">All Supply Managers</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
+      buyerFilter.innerHTML    = '<option value="">All Buyers</option>'     + buyers.map(b => `<option value="${b}">${b}</option>`).join('');
+
+      // Restore current filter selections
+      if (state.supplier) supplierFilterInput.value = state.supplier;
+      managerFilter.value  = state.manager;
+      buyerFilter.value    = state.buyer;
+    }
+
+    // ── Searchable supplier dropdown ──────────────────────────────────────────
+    function renderSupplierDropdown(allSuppliers, query) {
+      const q = query.toLowerCase();
+      const filtered = q ? allSuppliers.filter(s => s.toLowerCase().includes(q)) : allSuppliers;
+      const showAll = !q; // show "All Suppliers" option when no search
+
+      let html = '';
+      if (showAll) {
+        html += `<div class="search-select-item${!state.supplier ? ' selected' : ''}" data-value="">All Suppliers</div>`;
+      }
+      html += filtered.map(s =>
+        `<div class="search-select-item${state.supplier === s ? ' selected' : ''}" data-value="${s}">${s}</div>`
+      ).join('');
+
+      if (!filtered.length && q) {
+        html = '<div class="search-select-item" style="color:#6b7280;cursor:default;">No suppliers match</div>';
+      }
+
+      supplierDropdown.innerHTML = html;
+
+      // Attach click handlers
+      supplierDropdown.querySelectorAll('.search-select-item[data-value]').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault(); // prevent blur
+          const val = el.dataset.value;
+          state.supplier = val;
+          supplierFilterInput.value = val;
+          supplierFilter.value = val;
+          supplierClear.classList.toggle('visible', !!val);
+          supplierDropdown.classList.remove('open');
+          renderTable();
+        });
+      });
+    }
+
+    // Supplier input events
+    supplierFilterInput.addEventListener('focus', () => {
+      ensureDataLoaded().then(() => {
+        renderFilterOptions();
+        renderSupplierDropdown(window._supplierList || [], supplierFilterInput.value === state.supplier ? '' : supplierFilterInput.value);
+        supplierDropdown.classList.add('open');
+      });
+    });
+
+    supplierFilterInput.addEventListener('input', () => {
+      const q = supplierFilterInput.value;
+      renderSupplierDropdown(window._supplierList || [], q);
+      supplierDropdown.classList.add('open');
+    });
+
+    supplierFilterInput.addEventListener('blur', () => {
+      // Small delay to allow mousedown on item to fire
+      setTimeout(() => supplierDropdown.classList.remove('open'), 150);
+    });
+
+    supplierFilterInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        supplierDropdown.classList.remove('open');
+        supplierFilterInput.blur();
+      }
+      if (e.key === 'Enter') {
+        const first = supplierDropdown.querySelector('.search-select-item[data-value]');
+        if (first) first.dispatchEvent(new MouseEvent('mousedown'));
+      }
+    });
+
+    supplierClear.addEventListener('click', () => {
+      state.supplier = '';
+      supplierFilterInput.value = '';
+      supplierFilter.value = '';
+      supplierClear.classList.remove('visible');
+      renderTable();
+    });
+
+    // ── Progress bar ───────────────────────────────────────────────────────────
+    function updateProgressBar(filteredItems) {
+      if (!filteredItems || !filteredItems.length) {
+        progressWrap.style.display = 'none';
+        return;
+      }
+      const quoted = filteredItems.filter(item => !!loadQuotedPrice(item.item)).length;
+      const total  = filteredItems.length;
+      const pct    = total > 0 ? Math.round((quoted / total) * 100) : 0;
+      progressWrap.style.display  = 'block';
+      progressLabel.textContent   = `Quoted: ${quoted} / ${total} parts`;
+      progressPct.textContent     = `${pct}%`;
+      progressBar.style.width     = `${pct}%`;
+    }
+
+    // ── Quoted-cell updater (shared, called on render AND on input) ────────────
+    function updateQuotedCells(itemKey, quotedPriceVal) {
+      const itemObj = data.items.find(i => i.item === itemKey);
+      if (!itemObj) return;
+      const itemId = `row-${itemKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const quotedPrice = parseFloat(quotedPriceVal) || null;
+
+      const bpoPriceLatest = parseFloat(anySourceValue(itemObj, 'Price', 'BPO 6.1.26')) || 0;
+      const zzzPrice       = parseFloat(anySourceValue(itemObj, 'LIST PRICE', 'ZZZ 6.15.26')) || 0;
+      const usage          = parseFloat(anySourceValue(itemObj, 'Sum of USAGE', 'ZZZ 6.15.26'))
+                          || parseFloat(anySourceValue(itemObj, 'Sum of USAGE', 'ZZZ 12.1.25')) || 0;
+
+      const bpoDeltaCell  = partsTableBody.querySelector(`.quoted-delta-bpo-cell-${itemId}`);
+      const bpoImpactCell = partsTableBody.querySelector(`.quoted-impact-bpo-cell-${itemId}`);
+      const zzzDeltaCell  = partsTableBody.querySelector(`.quoted-delta-zzz-cell-${itemId}`);
+      const zzzImpactCell = partsTableBody.querySelector(`.quoted-impact-zzz-cell-${itemId}`);
+
+      if (quotedPrice && bpoPriceLatest) {
+        const d = calculateQuotedDelta(bpoPriceLatest, quotedPrice);
+        if (bpoDeltaCell) bpoDeltaCell.innerHTML = d !== null ? formatDelta(d) : '—';
+        const impact = calculateQuotedAnnualImpact(bpoPriceLatest, quotedPrice, usage);
+        if (bpoImpactCell) bpoImpactCell.innerHTML = impact !== null ? formatCurrency(impact) : '—';
+      } else {
+        if (bpoDeltaCell)  bpoDeltaCell.innerHTML  = '—';
+        if (bpoImpactCell) bpoImpactCell.innerHTML = '—';
+      }
+
+      if (quotedPrice && zzzPrice) {
+        const d = calculateQuotedDelta(zzzPrice, quotedPrice);
+        if (zzzDeltaCell) zzzDeltaCell.innerHTML = d !== null ? formatDelta(d) : '—';
+        const impact = calculateQuotedAnnualImpact(zzzPrice, quotedPrice, usage);
+        if (zzzImpactCell) zzzImpactCell.innerHTML = impact !== null ? formatCurrency(impact) : '—';
+      } else {
+        if (zzzDeltaCell)  zzzDeltaCell.innerHTML  = '—';
+        if (zzzImpactCell) zzzImpactCell.innerHTML = '—';
+      }
+    }
+
+    // ── Table render ──────────────────────────────────────────────────────────
+    function renderTable() {
+      if (!filtersSelected()) {
+        partsTableBody.innerHTML = `<tr><td colspan="26" style="padding:24px;text-align:center;color:#6b7280;">Please select a Supplier, Supply Manager, or Buyer to load parts.</td></tr>`;
+        if (exportExcelBtn) exportExcelBtn.disabled = true;
+        selectAllCb.checked = false;
+        updateProgressBar(null);
+        updateSelectedCount();
+        renderSummary([]);
+        return;
+      }
+
+      if (exportExcelBtn) exportExcelBtn.disabled = false;
+
+      const rows = data.items.filter(getFilterMatches);
+
+      partsTableBody.innerHTML = rows.map(item => {
+        const id      = `row-${item.item}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const checked = state.selected.has(item.item) ? 'checked' : '';
+        const status  = loadStatus(item.item);
+        const alertCls = getRowAlertClass(item);
+
+        const statusOptions = [
+          { val: 'not-started',  label: 'Not Started' },
+          { val: 'in-progress',  label: 'In Progress' },
+          { val: 'complete',     label: 'Complete' },
+        ].map(o => `<option value="${o.val}" ${status === o.val ? 'selected' : ''}>${o.label}</option>`).join('');
+
+        const uomOptions = getAvailableUOMs(item.item)
+          .map(uom => `<option value="${uom}" ${loadQuotedUOM(item.item) === uom ? 'selected' : ''}>${uom}</option>`)
+          .join('') + '<option value=""></option>';
+
+        return `
+          <tr data-item="${item.item}" class="${alertCls}">
+            <td><input type="checkbox" data-item="${item.item}" ${checked} /></td>
+            <td><select class="status-select status-${status}" data-item="${item.item}">${statusOptions}</select></td>
+            <td><strong>${item.item}</strong></td>
+            <td>${item.description || ''}</td>
+            <td>${item.suppliers.join(', ')}</td>
+            <td>${item.supplyManagers.join(', ') || ''}</td>
+            <td>${(item.buyers || []).join(', ') || ''}</td>
+            <td><input type="date" class="date-input" data-item="${item.item}" value="${loadDate(item.item)}" /></td>
+            <td><textarea class="note-input note-inline" data-item="${item.item}" rows="2" placeholder="Notes">${loadNote(item.item)}</textarea></td>
+            <td><input type="date" class="quoted-date-input" data-item="${item.item}" value="${loadQuotedDate(item.item)}" /></td>
+            <td><select class="quoted-uom-select" data-item="${item.item}">${uomOptions}</select></td>
+            <td><input type="number" class="quoted-price-input" data-item="${item.item}" step="0.0001" value="${loadQuotedPrice(item.item)}" placeholder="Price" /></td>
+            <td><textarea class="quoted-note-input note-inline" data-item="${item.item}" rows="2" placeholder="Supplier quote">${loadQuotedNote(item.item)}</textarea></td>
+            <td class="quoted-delta-bpo-cell-${id}">—</td>
+            <td class="quoted-impact-bpo-cell-${id}">—</td>
+            <td class="quoted-delta-zzz-cell-${id}">—</td>
+            <td class="quoted-impact-zzz-cell-${id}">—</td>
+            <td>${formatCurrency(anySourceValue(item, 'Price', 'BPO 12.4.25'))}${formatUOM(anySourceValue(item, 'UOM', 'BPO 12.4.25'))}</td>
+            <td>${formatCurrency(anySourceValue(item, 'Price', 'BPO 6.1.26'))}${formatUOM(anySourceValue(item, 'UOM', 'BPO 6.1.26'))}</td>
+            <td>${formatDelta(calculateDelta(anySourceValue(item, 'Price', 'BPO 12.4.25'), anySourceValue(item, 'Price', 'BPO 6.1.26')))}</td>
+            <td>${(() => { const i = calculateBPOAnnualImpact(item); return i !== null ? formatCurrency(i) : '—'; })()}</td>
+            <td>${formatCurrency(anySourceValue(item, 'LIST_PRICE_PER_PRIMARY UOM', 'ZZZ 12.1.25'))}${formatUOM(anySourceValue(item, 'PRIMARY_UOM', 'ZZZ 12.1.25') || anySourceValue(item, 'PELLA PRIMARY UOM', 'ZZZ 12.1.25'))}</td>
+            <td>${formatCurrency(anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26'))}${formatUOM(anySourceValue(item, 'PELLA PRIMARY UOM', 'ZZZ 6.15.26') || anySourceValue(item, 'PRIMARY_UOM', 'ZZZ 6.15.26'))}</td>
+            <td>${formatDelta(calculateDelta(anySourceValue(item, 'LIST_PRICE_PER_PRIMARY UOM', 'ZZZ 12.1.25'), anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26')))}</td>
+            <td>${(() => { const i = calculateAnnualImpact(item); return i !== null ? formatCurrency(i) : '—'; })()}</td>
+            <td>${anySourceValue(item, 'Sum of USAGE', 'ZZZ 6.15.26') || anySourceValue(item, 'Sum of USAGE', 'ZZZ 12.1.25') || '—'}</td>
+          </tr>
+          <tr class="details-row" id="details-${id}" style="display:none;">
+            <td colspan="26">
+              <div class="details-inner">
+                <div class="detail-block">
+                  <h4>All source records</h4>
+                  <ul>${item.sources.map(s => `<li><strong>${s.source}</strong> — Supplier: ${s.Supplier||s.SUPPLIER||''} | Price: ${formatCurrency(s.Price||s['LIST_PRICE_PER_PRIMARY UOM']||s.LIST_PRICE)} | UOM: ${s.UOM||s.PRIMARY_UOM||s['PELLA PRIMARY UOM']||''} | Supply Manager: ${s['Supply Manager']||s['SUPPLY MANAGER']||''}</li>`).join('')}</ul>
+                </div>
+                <div class="detail-block">
+                  <h4>BPO details</h4>
+                  <ul>${item.sources.filter(s => s.source.startsWith('BPO')).map(s => `<li><strong>${s.source}</strong><br>Number: ${s.Number||''}, Line: ${s.Line||''}, Category: ${s.Category||''}, UOM: ${s.UOM||''}, Currency: ${s.Currency||''}, Site: ${s.Site||''}</li>`).join('')}</ul>
+                </div>
+                <div class="detail-block">
+                  <h4>ZZZ price and usage</h4>
+                  <ul>${item.sources.filter(s => s.source.startsWith('ZZZ')).map(s => `<li><strong>${s.source}</strong><br>Supplier: ${s.SUPPLIER||s.Supplier||''}, Manager: ${s['Supply Manager']||s['SUPPLY MANAGER']||''}, Price: ${formatCurrency(s['LIST_PRICE_PER_PRIMARY UOM']||s.LIST_PRICE)}${s['Sum of USAGE']?', Usage: '+s['Sum of USAGE']:''}</li>`).join('')}</ul>
+                </div>
+                <div class="detail-block">
+                  <h4>Usage (ZZZ 6.15.26)</h4>
+                  <ul>${item.sources.filter(s => s.source === 'ZZZ 6.15.26').map(s => `<li>Sum of USAGE: ${s['Sum of USAGE']||'N/A'}<br>Usage $: ${formatCurrency(s['USAGE $'])||'N/A'}<br>Cost Usage: ${formatCurrency(s['$Usage'])||'N/A'}<br>On Hand: ${formatCurrency(s['$OnHand'])||'N/A'}</li>`).join('')}</ul>
+                </div>
+                <div class="detail-block" style="grid-column:1/-1;">
+                  <h4>Part notes</h4>
+                  <textarea class="note-input" data-item="${item.item}" rows="4" placeholder="Add notes for this part">${loadNote(item.item)}</textarea>
+                </div>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      // ── After render: recalculate quoted cells from stored values ─────────
+      rows.forEach(item => {
+        const storedPrice = loadQuotedPrice(item.item);
+        if (storedPrice) updateQuotedCells(item.item, storedPrice);
+      });
+
+      attachRowEvents(rows);
+      updateSelectAllState(rows);
+      updateSelectedCount();
+      updateProgressBar(rows);
+      renderSummary(rows);
+    }
+
+    // ── Row event listeners ───────────────────────────────────────────────────
+    function attachRowEvents(rows) {
+      partsTableBody.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const item = input.dataset.item;
+          if (input.checked) {
+            state.selected.add(item);
+            const dateInput = partsTableBody.querySelector(`input.date-input[data-item="${item}"]`);
+            if (dateInput && !dateInput.value) {
+              const today = new Date().toISOString().split('T')[0];
+              dateInput.value = today;
+              saveDate(item, today);
+            }
+          } else {
+            state.selected.delete(item);
+          }
+          updateSelectAllState(rows);
+          updateSelectedCount();
+          renderSummary(rows);
+        });
+      });
+
+      partsTableBody.querySelectorAll('input[type="date"].date-input').forEach(input => {
+        input.addEventListener('change', () => saveDate(input.dataset.item, input.value));
+      });
+      partsTableBody.querySelectorAll('input[type="date"].quoted-date-input').forEach(input => {
+        input.addEventListener('change', () => saveQuotedDate(input.dataset.item, input.value));
+      });
+      partsTableBody.querySelectorAll('.note-input').forEach(ta => {
+        ta.addEventListener('input', () => saveNote(ta.dataset.item, ta.value));
+      });
+      partsTableBody.querySelectorAll('.quoted-note-input').forEach(ta => {
+        ta.addEventListener('input', () => saveQuotedNote(ta.dataset.item, ta.value));
+      });
+      partsTableBody.querySelectorAll('.quoted-uom-select').forEach(sel => {
+        sel.addEventListener('change', () => {
+          saveQuotedUOM(sel.dataset.item, sel.value);
+          const priceInput = partsTableBody.querySelector(`.quoted-price-input[data-item="${sel.dataset.item}"]`);
+          if (priceInput) priceInput.dispatchEvent(new Event('input'));
+        });
+      });
+      partsTableBody.querySelectorAll('.quoted-price-input').forEach(input => {
+        input.addEventListener('input', () => {
+          const item = input.dataset.item;
+          saveQuotedPrice(item, input.value);
+          updateQuotedCells(item, input.value);
+          updateProgressBar(rows);
+          renderSummary(rows);
+        });
+      });
+      partsTableBody.querySelectorAll('.status-select').forEach(sel => {
+        sel.addEventListener('change', () => {
+          const item = sel.dataset.item;
+          saveStatus(item, sel.value);
+          sel.className = `status-select status-${sel.value}`;
+        });
+      });
+      partsTableBody.querySelectorAll('tr[data-item]').forEach(row => {
+        row.addEventListener('click', event => {
+          if (['input','textarea','select'].includes(event.target.tagName.toLowerCase())) return;
+          const details = row.nextElementSibling;
+          if (details && details.classList.contains('details-row')) {
+            details.style.display = details.style.display === 'none' ? 'table-row' : 'none';
+          }
+        });
+      });
+    }
+
+    // ── Select All logic ──────────────────────────────────────────────────────
+    function updateSelectAllState(rows) {
+      if (!rows || !rows.length) { selectAllCb.checked = false; selectAllCb.indeterminate = false; return; }
+      const selectedInView = rows.filter(i => state.selected.has(i.item)).length;
+      selectAllCb.indeterminate = selectedInView > 0 && selectedInView < rows.length;
+      selectAllCb.checked = selectedInView === rows.length;
+    }
+
+    selectAllCb.addEventListener('change', () => {
+      ensureDataLoaded().then(() => {
+        const rows = data.items.filter(getFilterMatches);
+        if (selectAllCb.checked) {
+          rows.forEach(item => {
+            state.selected.add(item.item);
+            // Auto-fill today's date if empty
+            const dateInput = partsTableBody.querySelector(`input.date-input[data-item="${item.item}"]`);
+            if (dateInput && !dateInput.value) {
+              const today = new Date().toISOString().split('T')[0];
+              dateInput.value = today;
+              saveDate(item.item, today);
+            }
+          });
+        } else {
+          rows.forEach(item => state.selected.delete(item.item));
+        }
+        // Re-sync individual checkboxes
+        partsTableBody.querySelectorAll('input[type="checkbox"][data-item]').forEach(cb => {
+          cb.checked = state.selected.has(cb.dataset.item);
+        });
+        updateSelectedCount();
+        renderSummary(rows);
+      });
+    });
+
+    function updateSelectedCount() {
+      selectedCount.textContent = `Selected parts: ${state.selected.size}`;
+    }
+
+    // ── Summary tab ───────────────────────────────────────────────────────────
+    function renderSummary(filteredItems) {
+      summaryItems.textContent    = data.summary.itemCount      || 0;
+      summarySuppliers.textContent = data.summary.supplierCount || 0;
+      summaryManagers.textContent  = data.summary.supplyManagerCount || 0;
+      summaryBuyers.textContent    = data.summary.buyerCount    || 0;
+
+      if (!filteredItems || !filteredItems.length) {
+        metricTotalParts.textContent    = 0;
+        metricSelectedParts.textContent = state.selected.size;
+        metricQuotedParts.textContent   = 0;
+        metricSuppliers.textContent     = 0;
+        metricManagers.textContent      = 0;
+        metricTotalImpactBPO.textContent = '—';
+        metricTotalImpactZZZ.textContent = '—';
+        summaryQuotedParts.textContent   = 0;
+        summaryTotalImpactBPO.textContent = '—';
+        summaryTotalImpactZZZ.textContent = '—';
+        summaryFilterDetails.textContent  = !filtersSelected()
+          ? 'No filter selected. Choose a Supplier, Supply Manager, or Buyer to load parts.'
+          : 'No parts match the current filter.';
+        supplierRollupBody.innerHTML = '<tr><td colspan="7" style="padding:16px;color:#6b7280;text-align:center;">Select a filter to see rollup data.</td></tr>';
+        return;
+      }
+
+      // Aggregate quoted impacts
+      let totalImpactBPO = 0, totalImpactZZZ = 0, impactBPOHasValue = false, impactZZZHasValue = false;
+      const supplierMap = {};
+
+      filteredItems.forEach(item => {
+        const quotedPrice = parseFloat(loadQuotedPrice(item.item)) || null;
+        const bpoPrice    = parseFloat(anySourceValue(item, 'Price', 'BPO 6.1.26')) || 0;
+        const zzzPrice    = parseFloat(anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26')) || 0;
+        const usage       = parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 6.15.26'))
+                         || parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 12.1.25')) || 0;
+        const usageDollar = parseFloat(anySourceValue(item, 'USAGE $', 'ZZZ 6.15.26')) || 0;
+
+        const impactBPO = quotedPrice && bpoPrice && usage ? calculateQuotedAnnualImpact(bpoPrice, quotedPrice, usage) : null;
+        const impactZZZ = quotedPrice && zzzPrice && usage ? calculateQuotedAnnualImpact(zzzPrice, quotedPrice, usage) : null;
+        const zzzDelta  = calculateDelta(anySourceValue(item, 'LIST_PRICE_PER_PRIMARY UOM', 'ZZZ 12.1.25'), anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26'));
+
+        if (impactBPO !== null) { totalImpactBPO += impactBPO; impactBPOHasValue = true; }
+        if (impactZZZ !== null) { totalImpactZZZ += impactZZZ; impactZZZHasValue = true; }
+
+        // Per-supplier rollup
+        const supplierKey = item.suppliers.join(', ') || '(no supplier)';
+        if (!supplierMap[supplierKey]) {
+          supplierMap[supplierKey] = { parts: 0, quoted: 0, usageDollar: 0, impactBPO: 0, impactZZZ: 0, zzzDeltas: [], hasBPOImpact: false, hasZZZImpact: false };
+        }
+        const sr = supplierMap[supplierKey];
+        sr.parts++;
+        sr.usageDollar += usageDollar;
+        if (quotedPrice) sr.quoted++;
+        if (impactBPO !== null) { sr.impactBPO += impactBPO; sr.hasBPOImpact = true; }
+        if (impactZZZ !== null) { sr.impactZZZ += impactZZZ; sr.hasZZZImpact = true; }
+        if (zzzDelta !== null) sr.zzzDeltas.push(zzzDelta);
+      });
+
+      const quotedCount  = filteredItems.filter(i => !!loadQuotedPrice(i.item)).length;
+      const suppliers    = new Set(filteredItems.flatMap(i => i.suppliers));
+      const managers     = new Set(filteredItems.flatMap(i => i.supplyManagers));
+
+      metricTotalParts.textContent    = filteredItems.length;
+      metricSelectedParts.textContent = state.selected.size;
+      metricQuotedParts.textContent   = quotedCount;
+      metricSuppliers.textContent     = suppliers.size;
+      metricManagers.textContent      = managers.size;
+      metricTotalImpactBPO.textContent = impactBPOHasValue ? formatCurrency(totalImpactBPO) : '—';
+      metricTotalImpactZZZ.textContent = impactZZZHasValue ? formatCurrency(totalImpactZZZ) : '—';
+      summaryQuotedParts.textContent   = quotedCount;
+      summaryTotalImpactBPO.textContent = impactBPOHasValue ? formatCurrency(totalImpactBPO) : '—';
+      summaryTotalImpactZZZ.textContent = impactZZZHasValue ? formatCurrency(totalImpactZZZ) : '—';
+      summaryFilterDetails.textContent  = `Showing ${filteredItems.length} parts after filter. ${quotedCount} quoted. ${state.selected.size} selected.`;
+
+      // Supplier rollup table
+      supplierRollupBody.innerHTML = Object.entries(supplierMap)
+        .sort((a, b) => b[1].parts - a[1].parts)
+        .map(([supplier, sr]) => {
+          const avgDelta = sr.zzzDeltas.length ? sr.zzzDeltas.reduce((a, b) => a + b, 0) / sr.zzzDeltas.length : null;
+          return `<tr>
+            <td>${supplier}</td>
+            <td>${sr.parts}</td>
+            <td>${sr.quoted}</td>
+            <td>${sr.usageDollar ? formatCurrency(sr.usageDollar) : '—'}</td>
+            <td>${sr.hasBPOImpact ? formatCurrency(sr.impactBPO) : '—'}</td>
+            <td>${sr.hasZZZImpact ? formatCurrency(sr.impactZZZ) : '—'}</td>
+            <td>${avgDelta !== null ? formatDelta(avgDelta) : '—'}</td>
+          </tr>`;
+        }).join('');
+    }
+
+    // ── Export to Excel ───────────────────────────────────────────────────────
+    function exportToExcel() {
+      const rows = data.items.filter(getFilterMatches).map(item => {
+        const bpoA = anySourceValue(item, 'Price', 'BPO 12.4.25') || '';
+        const bpoB = anySourceValue(item, 'Price', 'BPO 6.1.26')  || '';
+        const zzzA = anySourceValue(item, 'LIST_PRICE_PER_PRIMARY UOM', 'ZZZ 12.1.25') || '';
+        const zzzB = anySourceValue(item, 'LIST PRICE', 'ZZZ 6.15.26')                 || '';
+        const zzzRec       = item.sources.find(s => s.source === 'ZZZ 6.15.26') || {};
+        const quotedPrice  = loadQuotedPrice(item.item) || '';
+        const quotedPriceN = parseFloat(quotedPrice) || 0;
+        const usage        = parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 6.15.26'))
+                          || parseFloat(anySourceValue(item, 'Sum of USAGE', 'ZZZ 12.1.25')) || 0;
+        return {
+          Status: loadStatus(item.item),
+          Item: item.item,
+          Description: item.description || '',
+          Supplier: (item.suppliers || []).join(', '),
+          SupplyManager: (item.supplyManagers || []).join(', '),
+          Buyer: (item.buyers || []).join(', '),
+          DateChecked: loadDate(item.item) || '',
+          Notes: loadNote(item.item) || '',
+          QuotedDate: loadQuotedDate(item.item) || '',
+          QuotedUOM: loadQuotedUOM(item.item) || '',
+          QuotedPrice: quotedPrice,
+          SupplierQuote: loadQuotedNote(item.item) || '',
+          QuotedPrice_pct_delta_vs_BPO: quotedPriceN && bpoB ? calculateQuotedDelta(bpoB, quotedPriceN) : '',
+          QuotedAnnualImpact_vs_BPO:    quotedPriceN && usage ? calculateQuotedAnnualImpact(parseFloat(bpoB)||0, quotedPriceN, usage) : '',
+          QuotedPrice_pct_delta_vs_ZZZ: quotedPriceN && zzzB ? calculateQuotedDelta(parseFloat(zzzB)||0, quotedPriceN) : '',
+          QuotedAnnualImpact_vs_ZZZ:    quotedPriceN && usage ? calculateQuotedAnnualImpact(parseFloat(zzzB)||0, quotedPriceN, usage) : '',
+          BPO_12_4_25_Price: bpoA,
+          BPO_6_1_26_Price:  bpoB,
+          BPO_pct_delta: calculateDelta(bpoA, bpoB),
+          BPO_AnnualImpact: calculateBPOAnnualImpact(item),
+          ZZZ_12_1_25_Price: zzzA,
+          ZZZ_6_15_26_Price: zzzB,
+          ZZZ_pct_delta: calculateDelta(zzzA, zzzB),
+          ZZZ_AnnualImpact: calculateAnnualImpact(item),
+          Sum_of_USAGE: zzzRec['Sum of USAGE'] || '',
+          USAGE_Dollar: zzzRec['USAGE $'] || '',
+        };
+      });
+
+      try {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'MarketData');
+        XLSX.writeFile(wb, `market-data-export-${new Date().toISOString().slice(0,10)}.xlsx`);
+      } catch (e) {
+        alert('Export failed: ' + e.message);
+      }
+    }
+
+    // ── Event wiring ──────────────────────────────────────────────────────────
+    function attachEvents() {
+      const lazyLoadAndRender = (cb) => {
+        ensureDataLoaded().then(() => {
+          renderFilterOptions();
+          if (typeof cb === 'function') cb();
+        }).catch(err => {
+          console.error('Failed to load market data', err);
+          alert('Failed to load market data. See console for details.');
+        });
+      };
+
+      // Lazy-load on first focus of any filter
+      [managerFilter, buyerFilter].forEach(f => {
+        f.addEventListener('focus', () => lazyLoadAndRender());
+      });
+
+      // Supplier filter is handled by the searchable input (events attached above)
+      managerFilter.addEventListener('change',  e => { state.manager  = e.target.value; renderTable(); });
+      buyerFilter.addEventListener('change',    e => { state.buyer    = e.target.value; renderTable(); });
+      searchTerm.addEventListener('input',      e => { state.search   = e.target.value; renderTable(); });
+
+      resetFilters.addEventListener('click', () => {
+        supplierFilterInput.value = '';
+        supplierFilter.value = '';
+        supplierClear.classList.remove('visible');
+        managerFilter.value  = '';
+        buyerFilter.value    = '';
+        searchTerm.value     = '';
+        state.supplier = ''; state.manager = ''; state.buyer = ''; state.search = '';
+        renderTable();
+      });
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          Object.values(sections).forEach(s => s.classList.remove('active'));
+          sections[tab.dataset.target].classList.add('active');
+        });
+      });
+
+      if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      const connEl = document.getElementById('connStatus');
+      // Load SharePoint data first if configured
+      if (spAvailable) {
+        try {
+          await loadFromSharePoint();
+          connEl.textContent = '✓ Connected to SharePoint';
+          connEl.style.background = '#86efac';
+          connEl.style.color = '#065f46';
+        } catch(e) {
+          console.warn('SP load error:', e);
+          connEl.textContent = '⚠ SharePoint offline — using local storage';
+          connEl.style.background = '#fca5a5';
+          connEl.style.color = '#7f1d1d';
+        }
+      } else {
+        connEl.textContent = '⚙ Local mode — configure flow URLs to sync';
+        connEl.style.background = '#e2e8f0';
+        connEl.style.color = '#374151';
+      }
+      renderFilterOptions();
+      attachEvents();
+      renderTable();
+    }
+    init();
+  </script>
+</body>
+</html>
