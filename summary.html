@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Summary Dashboard — Market Testing Tracker</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #222; font-size: 14px; }
+.top-header {
+  background: linear-gradient(135deg, #002F6C 0%, #004FA3 100%);
+  color: white; padding: 14px 28px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.top-header h1 { font-size: 1.25rem; font-weight: 700; }
+.top-header .sub { font-size: 0.8rem; opacity: 0.75; margin-top: 2px; }
+.btn { padding: 7px 14px; border: none; border-radius: 5px; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+.btn-back { background: white; color: #002F6C; }
+.btn-back:hover { background: #f0f4ff; }
+.container { padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+.mode-toggle { display: flex; justify-content: center; gap: 0; padding: 12px 28px; background: #e8edf5; border-bottom: 2px solid #002F6C; }
+.mode-btn { padding: 10px 28px; font-size: 0.95rem; font-weight: 700; border: 2px solid #002F6C; cursor: pointer; transition: all 0.15s; }
+.mode-btn:first-child { border-radius: 8px 0 0 8px; border-right: none; }
+.mode-btn:last-child { border-radius: 0 8px 8px 0; }
+.mode-btn { background: white; color: #002F6C; }
+.mode-btn.active { background: #002F6C; color: white; }
+.mode-btn:hover:not(.active) { background: #f0f4ff; }
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.tab { padding: 8px 18px; border: 2px solid #002F6C; border-radius: 6px; background: white; color: #002F6C; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.tab.active { background: #002F6C; color: white; }
+.tab:hover:not(.active) { background: #f0f4ff; }
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card { background: white; border: 1px solid #dde3ef; border-radius: 10px; padding: 14px 18px; text-align: center; }
+.card .n { font-size: 1.6rem; font-weight: 800; color: #002F6C; }
+.card .lbl { font-size: 0.7rem; text-transform: uppercase; color: #666; margin-top: 4px; }
+.card.green .n { color: #1a7a3c; }
+.card.red .n { color: #b52a2a; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.07); margin-bottom: 20px; }
+thead tr { background: #002F6C; color: white; }
+th { padding: 9px 10px; text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; }
+td { padding: 7px 10px; border-bottom: 1px solid #eef0f5; }
+tbody tr:hover { background: #f5f8ff; }
+tbody tr.total-row { background: #e8edf5; font-weight: 700; }
+tbody tr.total-row td { border-top: 2px solid #002F6C; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.grn { color: #1a7a3c; font-weight: 700; }
+.red { color: #b52a2a; font-weight: 700; }
+.bar-wrap { width: 80px; height: 12px; background: #e0e6f0; border-radius: 6px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.bar-fill { height: 100%; background: linear-gradient(90deg,#1a7a3c,#27ae60); border-radius: 6px; }
+.loading { text-align: center; padding: 60px; font-size: 1.1rem; color: #666; }
+</style>
+</head>
+<body>
+<div class="top-header">
+  <div>
+    <h1>Summary Dashboard</h1>
+    <div class="sub">Market Testing Tracker — Aggregated View</div>
+  </div>
+  <button class="btn btn-back" onclick="window.close(); window.location.href='index.html';">← Back to Tracker</button>
+</div>
+
+<div class="mode-toggle">
+  <button class="mode-btn active" id="btn-production" onclick="setMode('production')">Production Items</button>
+  <button class="mode-btn" id="btn-mro" onclick="setMode('mro')">MRO Items</button>
+</div>
+
+<div class="container">
+  <div class="summary-cards" id="cards"></div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('mgr')">By Supply Manager</button>
+    <button class="tab" onclick="switchTab('sup')">By Supplier</button>
+  </div>
+  <div id="table-container"><div class="loading">Loading data...</div></div>
+</div>
+
+<script>
+// Load ALL_DATA from the main page's script (embedded in index.html)
+// We'll fetch index.html and extract the data
+let ALL_DATA = [];
+let currentMode = 'production';
+let currentTab = 'mgr';
+let reviewState = {}, quotedState = {}, notesState = {}, mktDateState = {};
+
+async function loadData() {
+  try {
+    // Try to load states from localStorage
+    try { reviewState = JSON.parse(localStorage.getItem('pella_mtt2_reviews') || '{}'); } catch(e){}
+    try { quotedState = JSON.parse(localStorage.getItem('pella_mtt2_quotes') || '{}'); } catch(e){}
+    try { notesState = JSON.parse(localStorage.getItem('pella_mtt2_notes') || '{}'); } catch(e){}
+    try { mktDateState = JSON.parse(localStorage.getItem('pella_mtt2_mktdates') || '{}'); } catch(e){}
+
+    // Fetch index.html and extract ALL_DATA
+    const resp = await fetch('index.html');
+    const text = await resp.text();
+    const match = text.match(/const ALL_DATA = (\[[\s\S]*?\]);/);
+    if (match) {
+      ALL_DATA = JSON.parse(match[1]);
+      render();
+    } else {
+      document.getElementById('table-container').innerHTML = '<div class="loading">Error: Could not parse data from index.html</div>';
+    }
+  } catch(e) {
+    document.getElementById('table-container').innerHTML = '<div class="loading">Error loading data: ' + e.message + '</div>';
+  }
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-production').classList.toggle('active', mode === 'production');
+  document.getElementById('btn-mro').classList.toggle('active', mode === 'mro');
+  render();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'mgr') || (i === 1 && tab === 'sup'));
+  });
+  render();
+}
+
+function fmt$(val) {
+  if (val == null || isNaN(val)) return '—';
+  const abs = Math.abs(val);
+  let str;
+  if (abs >= 1000000) str = '$' + (abs/1000000).toFixed(1) + 'M';
+  else if (abs >= 1000) str = '$' + (abs/1000).toFixed(1) + 'K';
+  else str = '$' + abs.toFixed(0);
+  return val < 0 ? '-' + str : str;
+}
+
+function render() {
+  const data = ALL_DATA.filter(r => currentMode === 'mro' ? r.is_mro : !r.is_mro);
+
+  // Compute top-level stats
+  const total = data.length;
+  const reviewed = data.filter(r => reviewState[r.item] && reviewState[r.item].reviewed).length;
+  const quoted = data.filter(r => quotedState[r.item] && quotedState[r.item].price != null).length;
+  let totalImpact = 0;
+  data.forEach(r => {
+    const q = quotedState[r.item];
+    if (q && q.price != null && r.item_cost && r.usage_qty) {
+      totalImpact += (q.price - r.item_cost) * r.usage_qty;
+    }
+  });
+  const totalUsage = data.reduce((s, r) => s + (r.dollar_usage || 0), 0);
+  const pct = total > 0 ? Math.round((reviewed / total) * 100) : 0;
+
+  document.getElementById('cards').innerHTML = `
+    <div class="card"><div class="n">${total.toLocaleString()}</div><div class="lbl">Total Items</div></div>
+    <div class="card green"><div class="n">${reviewed.toLocaleString()}</div><div class="lbl">Reviewed</div></div>
+    <div class="card"><div class="n">${(total - reviewed).toLocaleString()}</div><div class="lbl">Pending</div></div>
+    <div class="card"><div class="n">${quoted.toLocaleString()}</div><div class="lbl">Quoted</div></div>
+    <div class="card ${totalImpact < 0 ? 'green' : 'red'}"><div class="n">${fmt$(totalImpact)}</div><div class="lbl">Quoted Impact</div></div>
+    <div class="card"><div class="n">${fmt$(totalUsage)}</div><div class="lbl">Total $ Usage</div></div>
+    <div class="card"><div class="n">${pct}%</div><div class="lbl">% Complete</div></div>
+  `;
+
+  if (currentTab === 'mgr') renderByManager(data);
+  else renderBySupplier(data);
+}
+
+function renderByManager(data) {
+  const groups = {};
+  data.forEach(r => {
+    const key = r.supply_manager || '(unassigned)';
+    if (!groups[key]) groups[key] = { items: 0, usage: 0, reviewed: 0, quoted: 0, impact: 0, mro: 0 };
+    const g = groups[key];
+    g.items++;
+    g.usage += r.dollar_usage || 0;
+    if (reviewState[r.item] && reviewState[r.item].reviewed) g.reviewed++;
+    const q = quotedState[r.item];
+    if (q && q.price != null) {
+      g.quoted++;
+      if (r.item_cost && r.usage_qty) g.impact += (q.price - r.item_cost) * r.usage_qty;
+    }
+    if (r.is_mro) g.mro++;
+  });
+
+  const sorted = Object.entries(groups).sort((a, b) => b[1].usage - a[1].usage);
+  const totals = { items: 0, usage: 0, reviewed: 0, quoted: 0, impact: 0, mro: 0 };
+
+  let rows = sorted.map(([mgr, g]) => {
+    totals.items += g.items; totals.usage += g.usage; totals.reviewed += g.reviewed;
+    totals.quoted += g.quoted; totals.impact += g.impact; totals.mro += g.mro;
+    const pct = g.items > 0 ? Math.round((g.reviewed / g.items) * 100) : 0;
+    const impCls = g.impact < -0.01 ? 'grn' : (g.impact > 0.01 ? 'red' : '');
+    return `<tr>
+      <td>${mgr}</td>
+      <td class="num">${g.items.toLocaleString()}</td>
+      <td class="num">${fmt$(g.usage)}</td>
+      <td class="num">${g.reviewed}</td>
+      <td class="num">${g.quoted}</td>
+      <td class="num ${impCls}">${fmt$(g.impact)}</td>
+      <td class="num">${g.mro}</td>
+      <td><span class="bar-wrap"><span class="bar-fill" style="width:${pct}%"></span></span>${pct}%</td>
+    </tr>`;
+  }).join('');
+
+  const tPct = totals.items > 0 ? Math.round((totals.reviewed / totals.items) * 100) : 0;
+  const tImpCls = totals.impact < -0.01 ? 'grn' : (totals.impact > 0.01 ? 'red' : '');
+  rows += `<tr class="total-row">
+    <td>TOTAL</td>
+    <td class="num">${totals.items.toLocaleString()}</td>
+    <td class="num">${fmt$(totals.usage)}</td>
+    <td class="num">${totals.reviewed}</td>
+    <td class="num">${totals.quoted}</td>
+    <td class="num ${tImpCls}">${fmt$(totals.impact)}</td>
+    <td class="num">${totals.mro}</td>
+    <td><span class="bar-wrap"><span class="bar-fill" style="width:${tPct}%"></span></span>${tPct}%</td>
+  </tr>`;
+
+  document.getElementById('table-container').innerHTML = `<table>
+    <thead><tr><th>Supply Manager</th><th># Items</th><th>Total $ Usage</th><th>Reviewed</th><th>Quoted</th><th>Quoted Impact</th><th>MRO</th><th>% Complete</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+function renderBySupplier(data) {
+  const groups = {};
+  data.forEach(r => {
+    const key = r.supplier || '(unknown)';
+    if (!groups[key]) groups[key] = { items: 0, usage: 0, reviewed: 0, quoted: 0, impact: 0, mro: 0, mgr: r.supply_manager || '' };
+    const g = groups[key];
+    g.items++;
+    g.usage += r.dollar_usage || 0;
+    if (reviewState[r.item] && reviewState[r.item].reviewed) g.reviewed++;
+    const q = quotedState[r.item];
+    if (q && q.price != null) {
+      g.quoted++;
+      if (r.item_cost && r.usage_qty) g.impact += (q.price - r.item_cost) * r.usage_qty;
+    }
+    if (r.is_mro) g.mro++;
+  });
+
+  const sorted = Object.entries(groups).sort((a, b) => b[1].usage - a[1].usage);
+  const totals = { items: 0, usage: 0, reviewed: 0, quoted: 0, impact: 0, mro: 0 };
+
+  let rows = sorted.map(([sup, g]) => {
+    totals.items += g.items; totals.usage += g.usage; totals.reviewed += g.reviewed;
+    totals.quoted += g.quoted; totals.impact += g.impact; totals.mro += g.mro;
+    const pct = g.items > 0 ? Math.round((g.reviewed / g.items) * 100) : 0;
+    const impCls = g.impact < -0.01 ? 'grn' : (g.impact > 0.01 ? 'red' : '');
+    return `<tr>
+      <td>${sup}</td>
+      <td class="num">${g.items.toLocaleString()}</td>
+      <td class="num">${fmt$(g.usage)}</td>
+      <td class="num">${g.reviewed}</td>
+      <td class="num">${g.quoted}</td>
+      <td class="num ${impCls}">${fmt$(g.impact)}</td>
+      <td class="num">${g.mro}</td>
+      <td>${g.mgr}</td>
+      <td><span class="bar-wrap"><span class="bar-fill" style="width:${pct}%"></span></span>${pct}%</td>
+    </tr>`;
+  }).join('');
+
+  const tPct = totals.items > 0 ? Math.round((totals.reviewed / totals.items) * 100) : 0;
+  const tImpCls = totals.impact < -0.01 ? 'grn' : (totals.impact > 0.01 ? 'red' : '');
+  rows += `<tr class="total-row">
+    <td>TOTAL</td>
+    <td class="num">${totals.items.toLocaleString()}</td>
+    <td class="num">${fmt$(totals.usage)}</td>
+    <td class="num">${totals.reviewed}</td>
+    <td class="num">${totals.quoted}</td>
+    <td class="num ${tImpCls}">${fmt$(totals.impact)}</td>
+    <td class="num">${totals.mro}</td>
+    <td></td>
+    <td><span class="bar-wrap"><span class="bar-fill" style="width:${tPct}%"></span></span>${tPct}%</td>
+  </tr>`;
+
+  document.getElementById('table-container').innerHTML = `<table>
+    <thead><tr><th>Supplier</th><th># Items</th><th>Total $ Usage</th><th>Reviewed</th><th>Quoted</th><th>Quoted Impact</th><th>MRO</th><th>Supply Mgr</th><th>% Complete</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+loadData();
+</script>
+</body>
+</html>
