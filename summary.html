@@ -62,6 +62,8 @@ tbody tr.total-row td { border-top: 2px solid #002F6C; }
 <div class="mode-toggle">
   <button class="mode-btn active" id="btn-production" onclick="setMode('production')">Production Items</button>
   <button class="mode-btn" id="btn-mro" onclick="setMode('mro')">MRO Items</button>
+  <button class="mode-btn" id="btn-cws" onclick="setMode('cws')">CWS Items</button>
+  <button class="mode-btn" id="btn-ws" onclick="setMode('ws')">Weathershield</button>
 </div>
 
 <div class="container">
@@ -108,6 +110,8 @@ function setMode(mode) {
   currentMode = mode;
   document.getElementById('btn-production').classList.toggle('active', mode === 'production');
   document.getElementById('btn-mro').classList.toggle('active', mode === 'mro');
+  document.getElementById('btn-cws').classList.toggle('active', mode === 'cws');
+  document.getElementById('btn-ws').classList.toggle('active', mode === 'ws');
   render();
 }
 
@@ -130,7 +134,13 @@ function fmt$(val) {
 }
 
 function render() {
-  const data = ALL_DATA.filter(r => currentMode === 'mro' ? r.is_mro : !r.is_mro);
+  const data = ALL_DATA.filter(r => {
+    if (currentMode === 'production') return !r.is_mro && !r.is_cws && !r.is_ws;
+    if (currentMode === 'mro') return r.is_mro;
+    if (currentMode === 'cws') return r.is_cws;
+    if (currentMode === 'ws') return r.is_ws;
+    return true;
+  });
 
   // Compute top-level stats
   const total = data.length;
